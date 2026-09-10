@@ -1,0 +1,16 @@
+{
+  "name": "Dash — Dish英会話",
+  "short_name": "Dash",
+  "description": "復習を駆け抜ける",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#00146d",
+  "theme_color": "#00146d",
+  "icons": [
+    { "src": "assets/brand/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "assets/brand/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
