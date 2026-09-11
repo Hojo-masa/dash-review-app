@@ -277,10 +277,40 @@ body{
 .mic-btn.listening{background:var(--accent);animation:pulse 1s infinite}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,122,89,.5)}50%{box-shadow:0 0 0 16px rgba(255,122,89,0)}}
 .mic-status{min-height:20px;color:var(--ink-soft);font-size:14px;font-weight:700;margin-top:4px}
-.answer-reveal{background:var(--brand-soft);border:1px solid var(--brand);border-radius:14px;
-  padding:16px;text-align:center;margin-top:12px}
+.answer-reveal{border-radius:14px;padding:16px;text-align:center;margin-top:12px;
+  background:var(--surface);border:1px solid var(--line)}
+.answer-reveal.ok{background:var(--good-soft);border-color:var(--good)}
+.answer-reveal.neutral{background:var(--brand-soft);border-color:var(--brand)}
 .answer-en{font-size:22px;font-weight:800;color:var(--brand-dark)}
+.answer-reveal.ok .answer-en{color:var(--good-dark)}
 .answer-ja{font-size:15px;color:var(--ink-soft);margin-top:4px}
+.said-wrong{background:var(--bad-soft);border:1px solid var(--bad);border-radius:14px;
+  padding:14px;text-align:center;margin-top:12px}
+.said-en{font-size:21px;font-weight:800;color:var(--bad)}
+.reveal-label{font-size:12px;font-weight:800;color:var(--ink-soft);margin-bottom:4px}
+.reveal-label.good{color:var(--good-dark)}
+.reveal-label.bad{color:var(--bad)}
+
+/* 正解お祝い（全画面ばーん） */
+.celebrate{position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:28px;
+  background:linear-gradient(160deg,#1fbf6e,#0c8a4d);color:#fff;
+  animation:cele-in .3s ease;overflow:hidden}
+@keyframes cele-in{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+.celebrate-burst{font-size:96px;line-height:1;animation:cele-pop .55s cubic-bezier(.2,1.5,.4,1)}
+@keyframes cele-pop{0%{transform:scale(.2) rotate(-12deg)}70%{transform:scale(1.25)}100%{transform:scale(1) rotate(0)}}
+.celebrate-word{font-size:42px;font-weight:900;margin:12px 0 8px;letter-spacing:1px;
+  text-shadow:0 3px 0 rgba(0,0,0,.15)}
+.celebrate-en{font-size:22px;font-weight:800;background:rgba(255,255,255,.18);
+  border-radius:14px;padding:12px 18px;margin-bottom:28px;max-width:360px}
+.celebrate-next{max-width:360px;width:100%;background:#fff;color:var(--good-dark)}
+.confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.confetti span{position:absolute;left:50%;top:44%;font-size:28px;
+  animation:cele-burst 1s ease-out forwards}
+@keyframes cele-burst{
+  0%{transform:translate(-50%,-50%) scale(.2);opacity:0}
+  20%{opacity:1}
+  100%{transform:translate(calc(-50% + var(--tx)),calc(-50% + var(--ty))) scale(1.1) rotate(var(--r));opacity:0}}
 .selfcheck{display:flex;gap:12px;margin-top:14px}
 .selfcheck .btn{margin:0}
 

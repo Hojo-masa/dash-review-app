@@ -57,7 +57,7 @@ export function play(lesson, root, onFinish){
         return t === target || t.includes(target) || target.includes(t);
       });
       status.textContent = '';
-      finish(ok, `あなた: 「${alts[0]}」`);
+      finish(ok, alts[0]);
     }catch(err){
       micBtn.classList.remove('listening');
       status.textContent = (err==='not-allowed'||err==='service-not-allowed')
@@ -67,26 +67,56 @@ export function play(lesson, root, onFinish){
 
   function reveal(){ finish(null, null); }  // self-check mode
 
-  // ok=true/false auto-judged, or ok=null => self-check
-  function finish(ok, sub){
+  // ok=true/false auto-judged (transcript=聞き取った文), or ok=null => self-check
+  function finish(ok, transcript){
     const q = questions[idx];
     speak(q.full);
     const play = root.querySelector('.play');
     play.querySelectorAll('.mic-btn,.btn.ghost,.mic-status,.cue-hint,.hint-gate').forEach(el=>el.remove());
-    // 英語のみ表示。日本語は「英語で聞く」ゲート経由でしか出さない（ズル防止）
-    const ansCard = h('div',{class:'answer-reveal'}, h('div',{class:'answer-en'}, q.full));
-    play.append(ansCard);
 
     if(ok === null){
-      // self grade
+      // 自己採点：正解例（ニュートラル）＋言えた/まだ
+      play.append(h('div',{class:'answer-reveal neutral'},
+        h('div',{class:'reveal-label'}, '正解例'),
+        h('div',{class:'answer-en'}, q.full)));
       play.append(h('div',{class:'selfcheck'},
         h('button',{class:'btn',onClick:()=>{score++;next();}}, '言えた ⭕'),
-        h('button',{class:'btn ghost',onClick:next}, 'まだ 🔁')
-      ));
-    }else{
-      if(ok) score++;
-      feedback(ok, sub || q.full, next).forEach(el => play.append(el));
+        h('button',{class:'btn ghost',onClick:next}, 'まだ 🔁')));
+      return;
     }
+
+    if(ok){ score++; celebrate(q); return; }   // 正解＝全画面ばーん
+
+    // 失敗：あなたの回答を上に赤で
+    play.append(h('div',{class:'said-wrong'},
+      h('div',{class:'reveal-label bad'}, '🗣️ あなたの回答'),
+      h('div',{class:'said-en'}, transcript || '（聞き取れませんでした）')));
+    // 正解例を下に
+    play.append(h('div',{class:'answer-reveal ok'},
+      h('div',{class:'reveal-label good'}, '✅ 正解例'),
+      h('div',{class:'answer-en'}, q.full)));
+    play.append(h('button',{class:'btn accent',style:'margin-top:14px',onClick:next}, '次へ →'));
+  }
+
+  // 全画面のお祝い演出（正解時）
+  function celebrate(q){
+    const words  = ['ナイス！','最高！','いいね！','完璧！','その調子！','やるね！'];
+    const emojis = ['🎉','💯','🔥','⭐','🙌','✨'];
+    const confetti = h('div',{class:'confetti'});
+    for(let i=0;i<14;i++){
+      const ang = Math.random()*Math.PI*2, dist = 120 + Math.random()*170;
+      const tx = Math.cos(ang)*dist, ty = Math.sin(ang)*dist - 40;
+      confetti.append(h('span',{
+        style:`--tx:${tx.toFixed(0)}px;--ty:${ty.toFixed(0)}px;--r:${(Math.random()*720-360)|0}deg;animation-delay:${(Math.random()*0.15).toFixed(2)}s`
+      }, emojis[i % emojis.length]));
+    }
+    root.append(h('div',{class:'celebrate'},
+      confetti,
+      h('div',{class:'celebrate-burst'}, emojis[Math.floor(Math.random()*emojis.length)]),
+      h('div',{class:'celebrate-word'}, words[Math.floor(Math.random()*words.length)]),
+      h('div',{class:'celebrate-en'}, q.full),
+      h('button',{class:'btn celebrate-next',onClick:next}, '次へ →')
+    ));
   }
 
   function next(){
