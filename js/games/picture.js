@@ -98,21 +98,26 @@ export function play(lesson, root, onFinish){
     play.append(h('button',{class:'btn accent',style:'margin-top:14px',onClick:next}, '次へ →'));
   }
 
-  // 全画面のお祝い演出（正解時）
+  // 全画面のド派手お祝い演出（正解時）
   function celebrate(q){
-    const words  = ['ナイス！','最高！','いいね！','完璧！','その調子！','やるね！'];
-    const emojis = ['🎉','💯','🔥','⭐','🙌','✨'];
+    const words  = ['ナイス！','最高！','いいね！','完璧！','その調子！','やるね！','爆速！'];
+    const emojis = ['🎉','💯','🔥','⭐','🙌','✨','🎊','🏆'];
+
+    // 紙吹雪バースト
     const confetti = h('div',{class:'confetti'});
-    for(let i=0;i<14;i++){
-      const ang = Math.random()*Math.PI*2, dist = 120 + Math.random()*170;
-      const tx = Math.cos(ang)*dist, ty = Math.sin(ang)*dist - 40;
+    for(let i=0;i<22;i++){
+      const ang = Math.random()*Math.PI*2, dist = 140 + Math.random()*220;
+      const tx = Math.cos(ang)*dist, ty = Math.sin(ang)*dist - 50;
       confetti.append(h('span',{
-        style:`--tx:${tx.toFixed(0)}px;--ty:${ty.toFixed(0)}px;--r:${(Math.random()*720-360)|0}deg;animation-delay:${(Math.random()*0.15).toFixed(2)}s`
+        style:`--tx:${tx.toFixed(0)}px;--ty:${ty.toFixed(0)}px;--r:${(Math.random()*720-360)|0}deg;animation-delay:${(Math.random()*0.2).toFixed(2)}s`
       }, emojis[i % emojis.length]));
     }
+
     root.append(h('div',{class:'celebrate'},
+      h('div',{class:'cele-bigflame'}, '🔥'),                                   // でかい炎（背面でゆらぐ）
+      h('div',{class:'cele-runner'}, '💨💨🏃'),                                  // Dashが横切る
       confetti,
-      h('div',{class:'celebrate-burst'}, emojis[Math.floor(Math.random()*emojis.length)]),
+      h('img',{class:'cele-icon',src:'assets/brand/icon-512.png',alt:''}),      // Dashアイコンがポワン
       h('div',{class:'celebrate-word'}, words[Math.floor(Math.random()*words.length)]),
       h('div',{class:'celebrate-en'}, q.full),
       h('button',{class:'btn celebrate-next',onClick:next}, '次へ →')
