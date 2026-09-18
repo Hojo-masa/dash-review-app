@@ -709,9 +709,21 @@ function teacherScreen(){
 }
 
 // ---------- 講師フィードバック入力 ----------
-function feedbackForm(student){
+async function feedbackForm(student){
+  let list = [];
+  try{ list = await db.getFeedbackList(student.code); }catch(e){}
+  const byLesson = {};
+  list.forEach(f => { if(f.lesson!=null && byLesson[f.lesson]===undefined) byLesson[f.lesson] = f; });
+  const evaluated = Object.keys(byLesson).map(Number);
+  const maxLesson = evaluated.length ? Math.max(...evaluated) : 0;
+  let curLesson = Math.min(12, maxLesson + 1) || 1;
+
   let score = null;
-  const weak = [];   // [{lesson, game}]
+  const weak = [];
+
+  const todaySel = h('select',{class:'fb-lesson-sel',onChange:()=>{ curLesson=Number(todaySel.value); loadLesson(); }},
+    ...LESSONS.map(L=>h('option',{value:L.no}, `Lesson ${L.no}：${L.title}`)));
+  const editNote = h('div',{class:'fb-editnote'});
 
   const scoreRow = h('div',{class:'score-row'});
   for(let i=1;i<=10;i++){
@@ -721,8 +733,8 @@ function feedbackForm(student){
     scoreRow.append(b);
   }
 
-  const lessonSel = h('select',{class:'auth-input select'}, ...LESSONS.map(L=>h('option',{value:L.no}, `L${L.no} ${L.title}`)));
-  const gameSel   = h('select',{class:'auth-input select'}, ...Object.entries(GAME_META).map(([id,m])=>h('option',{value:id}, m.label)));
+  const wpLessonSel = h('select',{class:'auth-input select'}, ...LESSONS.map(L=>h('option',{value:L.no}, `L${L.no} ${L.title}`)));
+  const gameSel     = h('select',{class:'auth-input select'}, ...Object.entries(GAME_META).map(([id,m])=>h('option',{value:id}, m.label)));
   const chips = h('div',{class:'chips'});
   function renderChips(){
     chips.innerHTML='';
@@ -733,35 +745,54 @@ function feedbackForm(student){
         h('span',{class:'chip-x',onClick:()=>{ weak.splice(idx,1); renderChips(); }},'×')));
     });
   }
-  renderChips();
   const addWp = h('button',{class:'btn ghost',style:'margin-top:8px',onClick:()=>{
-    const w = { lesson:Number(lessonSel.value), game:gameSel.value };
+    const w = { lesson:Number(wpLessonSel.value), game:gameSel.value };
     if(!weak.some(x=>x.lesson===w.lesson && x.game===w.game)){ weak.push(w); renderChips(); }
   }}, '＋ この弱点を追加');
 
   const note = h('textarea',{class:'auth-input',rows:'2',placeholder:'コメント（任意）',style:'resize:vertical'});
   const msg  = h('div',{class:'auth-msg'});
   const save = h('button',{class:'btn',style:'margin-top:12px',onClick:doSave}, 'この評価を保存');
+
+  function loadLesson(){
+    const f = byLesson[curLesson];
+    score = f ? f.score : null;
+    weak.length = 0; if(f && Array.isArray(f.weak_points)) f.weak_points.forEach(w=>weak.push({...w}));
+    note.value = f ? (f.note||'') : '';
+    [...scoreRow.children].forEach((c,idx)=>c.classList.toggle('on', idx+1===score));
+    renderChips();
+    editNote.textContent = f ? '✏️ このレッスンは評価済み。修正して上書きされます' : '🆕 新しい評価';
+    editNote.className = 'fb-editnote'+(f?' edit':'');
+    wpLessonSel.value = String(curLesson);
+  }
+
   async function doSave(){
     if(score==null){ msg.className='auth-msg ng'; msg.textContent='スコア（1〜10）を選んでね'; return; }
     save.disabled=true; msg.className='auth-msg'; msg.textContent='保存中…';
     try{
-      await db.saveFeedback(student.code, { score, note:note.value.trim(), weakPoints:weak });
+      await db.saveFeedback(student.code, { lesson:curLesson, score, note:note.value.trim(), weakPoints:weak });
       teacherScreen();
     }catch(e){ msg.className='auth-msg ng'; msg.textContent='保存に失敗しました'; save.disabled=false; }
   }
+
+  todaySel.value = String(curLesson);
+  loadLesson();
 
   mount(app,
     topbarSimple(student.name+' の評価', teacherScreen),
     h('div',{class:'wrap'},
       h('button',{class:'btn ghost',style:'margin-bottom:14px',onClick:()=>scheduleForm(student)}, '📅 スケジュールを設定'),
       h('div',{class:'auth-card card'},
+        h('div',{class:'auth-title'},'今日のレッスン'),
+        h('p',{class:'sub',style:'text-align:center;margin:-4px 0 8px'},'前回の次を自動表示（授業が前後したら変更OK）'),
+        todaySel, editNote),
+      h('div',{class:'auth-card card',style:'margin-top:12px'},
         h('div',{class:'auth-title'},'今日の総合評価（1〜10）'),
         h('p',{class:'sub',style:'text-align:center;margin:-4px 0 8px'},'その子のレベル基準で相対評価'),
         scoreRow),
       h('div',{class:'auth-card card',style:'margin-top:12px'},
         h('div',{class:'auth-title'},'弱点を指定（レッスン × スキル）'),
-        h('div',{class:'wp-selects'}, lessonSel, gameSel),
+        h('div',{class:'wp-selects'}, wpLessonSel, gameSel),
         addWp, chips),
       h('div',{class:'auth-card card',style:'margin-top:12px'},
         h('div',{class:'auth-title'},'コメント'), note),

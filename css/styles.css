@@ -258,6 +258,11 @@ body{
 .score-btn{border:2px solid var(--line);background:var(--surface);border-radius:12px;padding:12px 0;
   font-size:17px;font-weight:800;cursor:pointer;color:var(--ink)}
 .score-btn.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.fb-lesson-sel{width:100%;-webkit-appearance:menulist;appearance:auto;border:2px solid var(--brand);
+  border-radius:12px;padding:13px 10px;font-size:16px;font-weight:800;font-family:inherit;
+  background:var(--surface);color:var(--brand-dark)}
+.fb-editnote{text-align:center;font-size:13px;font-weight:700;color:var(--ink-soft);margin-top:8px}
+.fb-editnote.edit{color:var(--accent)}
 .wp-selects{display:flex;gap:8px;margin-bottom:4px}
 .select{-webkit-appearance:menulist;appearance:auto;text-align:left;flex:1;min-width:0}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}

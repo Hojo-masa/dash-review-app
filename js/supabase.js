@@ -36,17 +36,19 @@ export async function listStudents(){
   return res.data || [];
 }
 
-// 講師フィードバックを保存（弱点＋総合スコア）
-export async function saveFeedback(code, { score, note, weakPoints }){
+// 講師フィードバックを保存（1レッスン1評価＝上書き）
+export async function saveFeedback(code, { lesson, score, note, weakPoints }){
   const { error } = await sb.from('feedback')
-    .insert({ code, score, note: note || null, weak_points: weakPoints || [] });
+    .upsert({ code, lesson, score, note: note || null, weak_points: weakPoints || [],
+              created_at: new Date().toISOString() },
+            { onConflict: 'code,lesson' });
   if(error) throw error;
 }
 
 // 生徒のフィードバック履歴（新しい順）。[0]=最新（現在の弱点）／合計スコア=累計スター
 export async function getFeedbackList(code){
   const { data, error } = await sb.from('feedback')
-    .select('score,note,weak_points,created_at')
+    .select('lesson,score,note,weak_points,created_at')
     .eq('code', code)
     .order('created_at', { ascending:false });
   if(error) throw error;
