@@ -169,22 +169,26 @@ async function scheduleScreen(){
   window.scrollTo(0,0);
 }
 
+function fmtSlot(s){
+  if(!s) return '';
+  if(s.start || s.end) return `${s.start||''}${(s.start&&s.end)?'〜':''}${s.end||''}`;
+  return s.time || '';
+}
 function weeklyView(sch){
   const days = ['月','火','水','木','金','土','日'];
   const byDay = Array.from({length:7}, ()=>[]);
-  if(sch.jp && sch.jp.day!=null && sch.jp.day!=='')      byDay[sch.jp.day].push({type:'jp',label:'日本人',time:sch.jp.time});
-  if(sch.native && sch.native.day!=null && sch.native.day!=='') byDay[sch.native.day].push({type:'native',label:'ネイティブ',time:sch.native.time});
-  const cols = byDay.map((lessons,i)=>h('div',{class:'wk-col'},
-    h('div',{class:'wk-day'+(i>=5?' wknd':'')}, days[i]),
-    h('div',{class:'wk-slots'},
+  const add = (s,type,label)=>{ if(s && s.day!=null && s.day!=='') byDay[s.day].push({type,label,time:fmtSlot(s)}); };
+  add(sch.jp,'jp','日本人講師'); add(sch.native,'native','ネイティブ講師');
+  const rows = byDay.map((lessons,i)=>h('div',{class:'wk-row'+(lessons.length?' has':'')},
+    h('div',{class:'wk-rowday'+(i>=5?' wknd':'')}, days[i]),
+    h('div',{class:'wk-rowslots'},
       ...(lessons.length
-        ? lessons.map(l=>h('div',{class:'wk-lesson '+l.type},
-            h('div',{class:'wk-type'}, l.label),
-            l.time ? h('div',{class:'wk-time'}, l.time) : ''))
-        : [h('div',{class:'wk-empty'})])
-    )
+        ? lessons.map(l=>h('div',{class:'wk-chip '+l.type},
+            h('span',{class:'wk-chip-type'}, l.label),
+            l.time ? h('span',{class:'wk-chip-time'}, l.time) : ''))
+        : [h('div',{class:'wk-none'}, '—')]))
   ));
-  return h('div',{class:'card wk-card'}, h('div',{class:'wk-grid'}, ...cols));
+  return h('div',{class:'card wk-card'}, ...rows);
 }
 
 // ---------- DAILY 10 (苦手をまとめて) ----------
@@ -617,24 +621,35 @@ async function scheduleForm(student){
   const days = ['月','火','水','木','金','土','日'];
   const startI = h('input',{class:'auth-input',type:'date',value:sch.term_start||''});
   const endI   = h('input',{class:'auth-input',type:'date',value:sch.term_end||''});
-  const daySel = (cur)=> h('select',{class:'auth-input select'},
+  const daySel = (cur)=> h('select',{class:'sched-day'},
     h('option',{value:''},'曜日'),
     ...days.map((d,i)=>{ const o=h('option',{value:i}, d+'曜'); if(cur===i) o.selected=true; return o; }));
-  const jpDay = daySel(sch.jp && sch.jp.day),   jpTime = h('input',{class:'auth-input',placeholder:'例: 17:00-18:00',value:(sch.jp&&sch.jp.time)||''});
-  const nvDay = daySel(sch.native && sch.native.day), nvTime = h('input',{class:'auth-input',placeholder:'例: 18:00-19:00',value:(sch.native&&sch.native.time)||''});
+  const timeI = (v)=> h('input',{class:'sched-time',type:'time',value:v||''});
+  const startOf = s => s ? (s.start || (s.time ? (s.time.split(/[-~〜]/)[0]||'').trim() : '')) : '';
+  const endOf   = s => s ? (s.end   || (s.time ? (s.time.split(/[-~〜]/)[1]||'').trim() : '')) : '';
+
+  const jpDay = daySel(sch.jp && sch.jp.day);
+  const jpS = timeI(startOf(sch.jp)), jpE = timeI(endOf(sch.jp));
+  const nvDay = daySel(sch.native && sch.native.day);
+  const nvS = timeI(startOf(sch.native)), nvE = timeI(endOf(sch.native));
   const msg = h('div',{class:'auth-msg'});
   const save = h('button',{class:'btn',style:'margin-top:12px',onClick:doSave}, 'スケジュールを保存');
+
+  function slot(daySel, s, e){
+    return daySel.value!=='' ? { day:Number(daySel.value), start:s.value, end:e.value } : null;
+  }
   async function doSave(){
     const data = {
       term_start: startI.value || null,
       term_end:   endI.value || null,
-      jp:     jpDay.value!=='' ? { day:Number(jpDay.value), time:jpTime.value.trim() } : null,
-      native: nvDay.value!=='' ? { day:Number(nvDay.value), time:nvTime.value.trim() } : null,
+      jp:     slot(jpDay, jpS, jpE),
+      native: slot(nvDay, nvS, nvE),
     };
     save.disabled=true; msg.className='auth-msg'; msg.textContent='保存中…';
     try{ await db.saveSchedule(student.code, data); schedule=undefined; feedbackForm(student); }
     catch(e){ msg.className='auth-msg ng'; msg.textContent='保存に失敗しました'; save.disabled=false; }
   }
+
   mount(app,
     topbarSimple(student.name+' のスケジュール', ()=>feedbackForm(student)),
     h('div',{class:'wrap'},
@@ -643,10 +658,10 @@ async function scheduleForm(student){
         h('div',{class:'wp-selects'}, startI, endI)),
       h('div',{class:'auth-card card',style:'margin-top:12px'},
         h('div',{class:'auth-title'},'日本人講師の枠'),
-        h('div',{class:'wp-selects'}, jpDay, jpTime)),
+        h('div',{class:'sched-row'}, jpDay, jpS, h('span',{class:'tilde'},'〜'), jpE)),
       h('div',{class:'auth-card card',style:'margin-top:12px'},
         h('div',{class:'auth-title'},'ネイティブ講師の枠'),
-        h('div',{class:'wp-selects'}, nvDay, nvTime)),
+        h('div',{class:'sched-row'}, nvDay, nvS, h('span',{class:'tilde'},'〜'), nvE)),
       msg, save
     )
   );

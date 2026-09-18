@@ -37,7 +37,8 @@ body{
 .topbar{
   position:sticky;top:0;z-index:20;
   display:flex;align-items:center;gap:12px;
-  padding:12px 16px;background:rgba(245,247,250,.92);backdrop-filter:blur(8px);
+  padding:calc(env(safe-area-inset-top, 0px) + 12px) 16px 12px;
+  background:rgba(245,247,250,.92);backdrop-filter:blur(8px);
   border-bottom:1px solid var(--line);
 }
 .topbar .logo{font-weight:800;letter-spacing:.5px;color:var(--brand);font-size:20px}
@@ -255,24 +256,34 @@ body{
 .term-card{padding:14px 16px;margin-bottom:14px}
 .term-label{font-size:12px;font-weight:800;color:var(--ink-soft)}
 .term-range{font-size:16px;font-weight:800;margin-top:2px}
-.wk-card{padding:10px 8px}
-.wk-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
-.wk-col{min-width:0}
-.wk-day{text-align:center;font-size:12px;font-weight:800;color:var(--ink-soft);padding:4px 0}
-.wk-day.wknd{color:var(--accent)}
-.wk-slots{display:flex;flex-direction:column;gap:4px;min-height:70px}
-.wk-empty{flex:1;background:var(--bg);border-radius:8px;min-height:64px}
-.wk-lesson{border-radius:9px;padding:8px 3px;text-align:center;min-height:64px;
-  display:flex;flex-direction:column;justify-content:center;gap:3px}
-.wk-lesson.jp{background:var(--brand-soft);border:1px solid var(--brand)}
-.wk-lesson.native{background:var(--accent-soft);border:1px solid var(--accent)}
-.wk-type{font-size:11px;font-weight:800;line-height:1.2}
-.wk-lesson.jp .wk-type{color:var(--brand-dark)}
-.wk-lesson.native .wk-type{color:var(--accent)}
-.wk-time{font-size:10px;font-weight:700;color:var(--ink-soft);line-height:1.1}
+.wk-card{padding:4px 8px}
+.wk-row{display:flex;align-items:center;gap:12px;padding:12px 6px;border-bottom:1px solid var(--line)}
+.wk-row:last-child{border-bottom:none}
+.wk-row:not(.has){opacity:.45}
+.wk-rowday{width:40px;height:40px;border-radius:12px;flex:none;display:flex;align-items:center;
+  justify-content:center;font-weight:800;font-size:16px;background:var(--bg);color:var(--ink-soft)}
+.wk-rowday.wknd{color:var(--accent)}
+.wk-row.has .wk-rowday{background:var(--brand);color:#fff}
+.wk-rowslots{flex:1;display:flex;flex-wrap:wrap;gap:8px}
+.wk-chip{border-radius:12px;padding:9px 14px;display:flex;flex-direction:column;line-height:1.25}
+.wk-chip.jp{background:var(--brand-soft);border:1px solid var(--brand)}
+.wk-chip.native{background:var(--accent-soft);border:1px solid var(--accent)}
+.wk-chip-type{font-size:13px;font-weight:800}
+.wk-chip.jp .wk-chip-type{color:var(--brand-dark)}
+.wk-chip.native .wk-chip-type{color:var(--accent)}
+.wk-chip-time{font-size:12.5px;font-weight:700;color:var(--ink-soft)}
+.wk-none{color:var(--ink-soft);font-size:14px;padding-left:2px}
 .sched-legend{display:flex;gap:16px;justify-content:center;margin-top:14px;font-size:13px;font-weight:700}
 .lg.jp{color:var(--brand)}
 .lg.native{color:var(--accent)}
+/* 講師：スケジュール入力 */
+.sched-row{display:flex;align-items:center;gap:8px}
+.sched-day{-webkit-appearance:menulist;appearance:auto;border:2px solid var(--line);border-radius:12px;
+  padding:12px 6px;font-size:15px;font-family:inherit;background:var(--surface);flex:none;min-width:82px}
+.sched-time{flex:1;min-width:0;border:2px solid var(--line);border-radius:12px;padding:11px 6px;
+  font-size:15px;font-family:inherit;background:var(--surface);text-align:center}
+.sched-time:focus,.sched-day:focus{outline:none;border-color:var(--brand)}
+.tilde{color:var(--ink-soft);font-weight:800;flex:none}
 
 /* ---- ランキング ---- */
 .rank-list{display:flex;flex-direction:column;gap:8px}
