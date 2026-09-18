@@ -30,7 +30,8 @@ body{
   -webkit-font-smoothing:antialiased;
   line-height:1.5;
 }
-#app{max-width:520px;margin:0 auto;min-height:100vh;position:relative;padding-bottom:82px}
+#app{max-width:520px;margin:0 auto;min-height:100vh;position:relative;
+  padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 100px)}
 
 /* ---- top bar ---- */
 .topbar{
@@ -241,10 +242,13 @@ body{
 /* ---- 下部タブバー ---- */
 .tabbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:520px;z-index:50;
   display:flex;background:var(--surface);border-top:1px solid var(--line);
-  box-shadow:0 -4px 16px rgba(10,20,60,.06);padding-bottom:env(safe-area-inset-bottom,0)}
-.tab{flex:1;border:none;background:none;cursor:pointer;padding:9px 0 8px;color:var(--ink-soft)}
-.tab-ico{font-size:22px;line-height:1}
-.tab-label{font-size:11px;font-weight:800;margin-top:3px}
+  box-shadow:0 -4px 16px rgba(10,20,60,.06);
+  padding-top:8px;padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 12px)}
+.tab{flex:1;border:none;background:none;cursor:pointer;padding:6px 0;color:var(--ink-soft);
+  display:flex;flex-direction:column;align-items:center;min-height:52px;justify-content:center}
+.tab:active{transform:scale(.94)}
+.tab-ico{font-size:24px;line-height:1}
+.tab-label{font-size:11px;font-weight:800;margin-top:4px}
 .tab.on{color:var(--brand)}
 
 /* ---- スケジュール（週間ビュー） ---- */
