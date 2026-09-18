@@ -29,6 +29,7 @@ const GAME_META = {
 let feedbackList = [];   // 生徒のフィードバック履歴（新→旧）
 let feedback = null;     // 最新（＝現在の弱点）
 let totalStars = 0;      // 累計スター（scoreの合計）
+let schedule;            // 生徒のスケジュール（undefined=未取得, null=未設定）
 
 async function loadFeedback(code){
   try{
@@ -59,6 +60,17 @@ function topbar(back){
     h('div',{class:'spacer'}),
     h('div',{class:'pill tappable',onClick:streakScreen}, h('span',{class:'fire'},'🔥'), String(progress.dailyStreak())),
     h('div',{class:'pill'}, '⭐ ', String(progress.weekXP()))
+  );
+}
+
+// ---------- 下部タブ ----------
+function tabBar(active){
+  const tab = (id, ico, label, fn) => h('button',{class:'tab'+(active===id?' on':''),onClick:fn},
+    h('div',{class:'tab-ico'}, ico), h('div',{class:'tab-label'}, label));
+  return h('div',{class:'tabbar'},
+    tab('home','🏠','ホーム', home),
+    tab('schedule','📅','スケジュール', scheduleScreen),
+    tab('ranking','🏆','ランキング', rankingScreen)
   );
 }
 
@@ -124,8 +136,55 @@ function home(){
     h('button',{class:'logout-link',onClick:doLogout}, 'ログアウト')
   ));
 
-  mount(app, topbar(null), h('div',{class:'wrap'}, ...children));
+  mount(app, topbar(null), h('div',{class:'wrap'}, ...children), tabBar('home'));
   window.scrollTo(0,0);
+}
+
+// ---------- スケジュール（時間割） ----------
+async function scheduleScreen(){
+  mount(app, topbar(null), h('div',{class:'wrap'}, h('div',{class:'sub'},'読み込み中…')), tabBar('schedule'));
+  if(schedule === undefined){
+    try{ schedule = await db.getSchedule(progress.currentUser()); }catch(e){ schedule = null; }
+  }
+  const sch = schedule;
+  const children = [ h('div',{class:'h1',style:'font-size:20px'}, '📅 スケジュール') ];
+  const hasAny = sch && (sch.term_start || sch.term_end || sch.jp || sch.native);
+  if(hasAny){
+    if(sch.term_start || sch.term_end){
+      children.push(h('div',{class:'card term-card'},
+        h('div',{class:'term-label'},'受講期間'),
+        h('div',{class:'term-range'}, `${sch.term_start||'—'}  〜  ${sch.term_end||'—'}`)));
+    }
+    children.push(weeklyView(sch));
+    children.push(h('div',{class:'sched-legend'},
+      h('span',{class:'lg jp'}, '■ 日本人講師'),
+      h('span',{class:'lg native'}, '■ ネイティブ講師')));
+  } else {
+    children.push(h('div',{class:'empty-feedback card'},
+      h('div',{style:'font-size:42px'}, '📅'),
+      h('div',{class:'ef-title'}, 'まだスケジュール未設定'),
+      h('div',{class:'sub'}, '先生が設定すると、授業の曜日・時間がここに出ます')));
+  }
+  mount(app, topbar(null), h('div',{class:'wrap'}, ...children), tabBar('schedule'));
+  window.scrollTo(0,0);
+}
+
+function weeklyView(sch){
+  const days = ['月','火','水','木','金','土','日'];
+  const byDay = Array.from({length:7}, ()=>[]);
+  if(sch.jp && sch.jp.day!=null && sch.jp.day!=='')      byDay[sch.jp.day].push({type:'jp',label:'日本人',time:sch.jp.time});
+  if(sch.native && sch.native.day!=null && sch.native.day!=='') byDay[sch.native.day].push({type:'native',label:'ネイティブ',time:sch.native.time});
+  const cols = byDay.map((lessons,i)=>h('div',{class:'wk-col'},
+    h('div',{class:'wk-day'+(i>=5?' wknd':'')}, days[i]),
+    h('div',{class:'wk-slots'},
+      ...(lessons.length
+        ? lessons.map(l=>h('div',{class:'wk-lesson '+l.type},
+            h('div',{class:'wk-type'}, l.label),
+            l.time ? h('div',{class:'wk-time'}, l.time) : ''))
+        : [h('div',{class:'wk-empty'})])
+    )
+  ));
+  return h('div',{class:'card wk-card'}, h('div',{class:'wk-grid'}, ...cols));
 }
 
 // ---------- DAILY 10 (苦手をまとめて) ----------
@@ -193,7 +252,7 @@ function nicknameEditor(){
 
 // ---------- ランキング ----------
 async function rankingScreen(){
-  mount(app, topbarSimple('ランキング', home), h('div',{class:'wrap'}, h('div',{class:'sub'},'読み込み中…')));
+  mount(app, topbar(null), h('div',{class:'wrap'}, h('div',{class:'sub'},'読み込み中…')), tabBar('ranking'));
   let rows = [];
   try{ rows = await db.getRanking(); }catch(e){}
   rows.sort((a,b)=> b.stars - a.stars || progress.streakFromData(b.data) - progress.streakFromData(a.data));
@@ -208,11 +267,12 @@ async function rankingScreen(){
       h('div',{class:'rank-stars'}, '⭐'+r.stars)
     ));
   });
-  mount(app, topbarSimple('ランキング', home),
+  mount(app, topbar(null),
     h('div',{class:'wrap'},
       h('div',{class:'h1',style:'font-size:20px'},'⭐ スターランキング'),
       h('p',{class:'sub'},'先生からもらった星の合計で競争！'),
-      list));
+      list),
+    tabBar('ranking'));
   window.scrollTo(0,0);
 }
 
@@ -533,6 +593,7 @@ function feedbackForm(student){
   mount(app,
     topbarSimple(student.name+' の評価', teacherScreen),
     h('div',{class:'wrap'},
+      h('button',{class:'btn ghost',style:'margin-bottom:14px',onClick:()=>scheduleForm(student)}, '📅 スケジュールを設定'),
       h('div',{class:'auth-card card'},
         h('div',{class:'auth-title'},'今日の総合評価（1〜10）'),
         h('p',{class:'sub',style:'text-align:center;margin:-4px 0 8px'},'その子のレベル基準で相対評価'),
@@ -543,6 +604,49 @@ function feedbackForm(student){
         addWp, chips),
       h('div',{class:'auth-card card',style:'margin-top:12px'},
         h('div',{class:'auth-title'},'コメント'), note),
+      msg, save
+    )
+  );
+  window.scrollTo(0,0);
+}
+
+// ---------- 講師：スケジュール設定 ----------
+async function scheduleForm(student){
+  let sch = {};
+  try{ sch = (await db.getSchedule(student.code)) || {}; }catch(e){}
+  const days = ['月','火','水','木','金','土','日'];
+  const startI = h('input',{class:'auth-input',type:'date',value:sch.term_start||''});
+  const endI   = h('input',{class:'auth-input',type:'date',value:sch.term_end||''});
+  const daySel = (cur)=> h('select',{class:'auth-input select'},
+    h('option',{value:''},'曜日'),
+    ...days.map((d,i)=>{ const o=h('option',{value:i}, d+'曜'); if(cur===i) o.selected=true; return o; }));
+  const jpDay = daySel(sch.jp && sch.jp.day),   jpTime = h('input',{class:'auth-input',placeholder:'例: 17:00-18:00',value:(sch.jp&&sch.jp.time)||''});
+  const nvDay = daySel(sch.native && sch.native.day), nvTime = h('input',{class:'auth-input',placeholder:'例: 18:00-19:00',value:(sch.native&&sch.native.time)||''});
+  const msg = h('div',{class:'auth-msg'});
+  const save = h('button',{class:'btn',style:'margin-top:12px',onClick:doSave}, 'スケジュールを保存');
+  async function doSave(){
+    const data = {
+      term_start: startI.value || null,
+      term_end:   endI.value || null,
+      jp:     jpDay.value!=='' ? { day:Number(jpDay.value), time:jpTime.value.trim() } : null,
+      native: nvDay.value!=='' ? { day:Number(nvDay.value), time:nvTime.value.trim() } : null,
+    };
+    save.disabled=true; msg.className='auth-msg'; msg.textContent='保存中…';
+    try{ await db.saveSchedule(student.code, data); schedule=undefined; feedbackForm(student); }
+    catch(e){ msg.className='auth-msg ng'; msg.textContent='保存に失敗しました'; save.disabled=false; }
+  }
+  mount(app,
+    topbarSimple(student.name+' のスケジュール', ()=>feedbackForm(student)),
+    h('div',{class:'wrap'},
+      h('div',{class:'auth-card card'},
+        h('div',{class:'auth-title'},'受講期間'),
+        h('div',{class:'wp-selects'}, startI, endI)),
+      h('div',{class:'auth-card card',style:'margin-top:12px'},
+        h('div',{class:'auth-title'},'日本人講師の枠'),
+        h('div',{class:'wp-selects'}, jpDay, jpTime)),
+      h('div',{class:'auth-card card',style:'margin-top:12px'},
+        h('div',{class:'auth-title'},'ネイティブ講師の枠'),
+        h('div',{class:'wp-selects'}, nvDay, nvTime)),
       msg, save
     )
   );

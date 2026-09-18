@@ -83,6 +83,18 @@ export async function saveProgress(code, blob){
   if(error) throw error;
 }
 
+// スケジュール（受講期間＋講師枠）
+export async function getSchedule(code){
+  const { data, error } = await sb.from('schedules').select('data').eq('code', code).maybeSingle();
+  if(error) throw error;
+  return data ? data.data : null;
+}
+export async function saveSchedule(code, data){
+  const { error } = await sb.from('schedules')
+    .upsert({ code, data, updated_at: new Date().toISOString() }, { onConflict:'code' });
+  if(error) throw error;
+}
+
 function genCode(name){
   const base = (name||'').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,6) || 'dash';
   const rnd = Math.random().toString(36).slice(2,6);

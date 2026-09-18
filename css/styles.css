@@ -30,7 +30,7 @@ body{
   -webkit-font-smoothing:antialiased;
   line-height:1.5;
 }
-#app{max-width:520px;margin:0 auto;min-height:100vh;position:relative;padding-bottom:24px}
+#app{max-width:520px;margin:0 auto;min-height:100vh;position:relative;padding-bottom:82px}
 
 /* ---- top bar ---- */
 .topbar{
@@ -237,6 +237,38 @@ body{
 .chip-x{cursor:pointer;font-weight:900;padding:0 2px}
 .tr-meta{display:flex;align-items:center;gap:10px;font-weight:800;font-size:13px}
 .tr-score{color:var(--gold)}
+
+/* ---- 下部タブバー ---- */
+.tabbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:520px;z-index:50;
+  display:flex;background:var(--surface);border-top:1px solid var(--line);
+  box-shadow:0 -4px 16px rgba(10,20,60,.06);padding-bottom:env(safe-area-inset-bottom,0)}
+.tab{flex:1;border:none;background:none;cursor:pointer;padding:9px 0 8px;color:var(--ink-soft)}
+.tab-ico{font-size:22px;line-height:1}
+.tab-label{font-size:11px;font-weight:800;margin-top:3px}
+.tab.on{color:var(--brand)}
+
+/* ---- スケジュール（週間ビュー） ---- */
+.term-card{padding:14px 16px;margin-bottom:14px}
+.term-label{font-size:12px;font-weight:800;color:var(--ink-soft)}
+.term-range{font-size:16px;font-weight:800;margin-top:2px}
+.wk-card{padding:10px 8px}
+.wk-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.wk-col{min-width:0}
+.wk-day{text-align:center;font-size:12px;font-weight:800;color:var(--ink-soft);padding:4px 0}
+.wk-day.wknd{color:var(--accent)}
+.wk-slots{display:flex;flex-direction:column;gap:4px;min-height:70px}
+.wk-empty{flex:1;background:var(--bg);border-radius:8px;min-height:64px}
+.wk-lesson{border-radius:9px;padding:8px 3px;text-align:center;min-height:64px;
+  display:flex;flex-direction:column;justify-content:center;gap:3px}
+.wk-lesson.jp{background:var(--brand-soft);border:1px solid var(--brand)}
+.wk-lesson.native{background:var(--accent-soft);border:1px solid var(--accent)}
+.wk-type{font-size:11px;font-weight:800;line-height:1.2}
+.wk-lesson.jp .wk-type{color:var(--brand-dark)}
+.wk-lesson.native .wk-type{color:var(--accent)}
+.wk-time{font-size:10px;font-weight:700;color:var(--ink-soft);line-height:1.1}
+.sched-legend{display:flex;gap:16px;justify-content:center;margin-top:14px;font-size:13px;font-weight:700}
+.lg.jp{color:var(--brand)}
+.lg.native{color:var(--accent)}
 
 /* ---- ランキング ---- */
 .rank-list{display:flex;flex-direction:column;gap:8px}
