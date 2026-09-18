@@ -1,5 +1,6 @@
 // ===== Shared game engine helpers =====
 import { DATA } from './data.js';
+import { EXTRA } from './extra.js';
 
 export const LESSONS = DATA.lessons;
 
@@ -42,6 +43,7 @@ export function allSentences(lesson){
   introItems(lesson).forEach(i => s.push({ full: i.full, note_ja: i.note_ja||'', note_en: i.note_en||'' }));
   practiceItems(lesson).forEach(p => s.push({ full: p.full, note_ja:'', note_en:'' }));
   (lesson.review || []).forEach(r => s.push({ full: r, note_ja:'', note_en:'' }));
+  (EXTRA[lesson.no] || []).forEach(f => s.push({ full: f, note_ja:'', note_en:'' }));   // 拡張フレーズ
   // de-dup by text
   const seen = new Set(); const out = [];
   for(const x of s){ if(!seen.has(x.full)){ seen.add(x.full); out.push(x); } }
