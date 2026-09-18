@@ -17,6 +17,8 @@ export function setUser(code, cloudData, name){
   }
 }
 export function currentUser(){ return currentCode; }
+export function nickname(){ return load().nickname || null; }
+export function setNickname(n){ const s = load(); s.nickname = (n||'').slice(0,20); save(s); }
 export function userName(){
   if(currentName) return currentName;
   try{ return localStorage.getItem('dash_current_name'); }catch(e){ return null; }

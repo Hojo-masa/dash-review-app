@@ -6,14 +6,14 @@ import { createHintGate } from '../hintGate.js';
 
 const MAX_Q = 8;
 
-export function play(lesson, root, onFinish){
+export function play(lesson, root, onFinish, opts={}){
   const pool = SLIDES.filter(s => s.lesson === lesson.no && s.word);
   if(pool.length < 4){
     mount(root, h('div',{class:'empty'}, 'このレッスンには絵の問題がまだありません。'));
     return;
   }
   const uniqWords = [...new Set(pool.map(s => s.word))];
-  const chosen = sample(pool, Math.min(MAX_Q, pool.length));
+  const chosen = sample(pool, Math.min(opts.limit || MAX_Q, pool.length));
   const questions = chosen.map(s => {
     const distractors = sample(uniqWords.filter(w => w !== s.word), 3);
     return { s, choices: shuffle([s.word, ...distractors]) };

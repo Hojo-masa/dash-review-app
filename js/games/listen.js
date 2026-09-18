@@ -4,7 +4,7 @@ import { h, mount, progressHeader, feedback, speak } from '../ui.js';
 
 const MAX_Q = 8;
 
-export function play(lesson, root, onFinish){
+export function play(lesson, root, onFinish, opts={}){
   // sentences that are pronounceable & distinct enough (2–10 words)
   const pool = allSentences(lesson).filter(s => {
     const n = s.full.trim().split(/\s+/).length;
@@ -14,7 +14,7 @@ export function play(lesson, root, onFinish){
     mount(root, h('div',{class:'empty'}, 'このレッスンにはリスニング問題がありません。'));
     return;
   }
-  const chosen = sample(pool, Math.min(MAX_Q, pool.length));
+  const chosen = sample(pool, Math.min(opts.limit || MAX_Q, pool.length));
   const questions = chosen.map(t => {
     const others = pool.filter(x => normalize(x.full) !== normalize(t.full));
     const distractors = sample(others, 3).map(x => x.full);

@@ -24,12 +24,51 @@ export async function createStudent(name){
 }
 
 export async function listStudents(){
-  const { data, error } = await sb
-    .from('students')
-    .select('code,name,created_at, progress(data,updated_at)')
+  let res = await sb.from('students')
+    .select('code,name,created_at, progress(data,updated_at), feedback(score,created_at)')
     .order('created_at', { ascending:true });
+  if(res.error){   // feedback テーブル未作成でも生徒一覧は出す
+    res = await sb.from('students')
+      .select('code,name,created_at, progress(data,updated_at)')
+      .order('created_at', { ascending:true });
+  }
+  if(res.error) throw res.error;
+  return res.data || [];
+}
+
+// 講師フィードバックを保存（弱点＋総合スコア）
+export async function saveFeedback(code, { score, note, weakPoints }){
+  const { error } = await sb.from('feedback')
+    .insert({ code, score, note: note || null, weak_points: weakPoints || [] });
+  if(error) throw error;
+}
+
+// 生徒のフィードバック履歴（新しい順）。[0]=最新（現在の弱点）／合計スコア=累計スター
+export async function getFeedbackList(code){
+  const { data, error } = await sb.from('feedback')
+    .select('score,note,weak_points,created_at')
+    .eq('code', code)
+    .order('created_at', { ascending:false });
   if(error) throw error;
   return data || [];
+}
+
+// ランキング用：全生徒の 累計スター（フィードバックscore合計）＋ニックネーム＋連続日
+export async function getRanking(){
+  const [fbRes, prRes, stRes] = await Promise.all([
+    sb.from('feedback').select('code,score'),
+    sb.from('progress').select('code,data'),
+    sb.from('students').select('code,name'),
+  ]);
+  const stars = {}; (fbRes.data||[]).forEach(f => { stars[f.code] = (stars[f.code]||0) + (f.score||0); });
+  const prog = {}; (prRes.data||[]).forEach(p => { prog[p.code] = p.data || {}; });
+  const rows = (stRes.data||[]).map(s => ({
+    code: s.code,
+    name: (prog[s.code] && prog[s.code].nickname) || s.name,
+    stars: stars[s.code] || 0,
+    data: prog[s.code] || {},
+  }));
+  return rows;
 }
 
 export async function getProgress(code){

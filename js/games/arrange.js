@@ -4,7 +4,7 @@ import { h, mount, progressHeader, feedback, speak } from '../ui.js';
 
 const MAX_Q = 6;
 
-export function play(lesson, root, onFinish){
+export function play(lesson, root, onFinish, opts={}){
   // pick sentences that make good arrange puzzles (2–8 words)
   const pool = allSentences(lesson).filter(s => {
     const n = tokenize(s.full).length;
@@ -14,7 +14,7 @@ export function play(lesson, root, onFinish){
     mount(root, h('div',{class:'empty'}, 'このレッスンには並べ替え問題がありません。'));
     return;
   }
-  const questions = sample(pool, Math.min(MAX_Q, pool.length));
+  const questions = sample(pool, Math.min(opts.limit || MAX_Q, pool.length));
 
   let idx = 0, score = 0;
   render();

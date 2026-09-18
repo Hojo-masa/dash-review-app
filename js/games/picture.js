@@ -6,7 +6,7 @@ import { createHintGate } from '../hintGate.js';
 
 const MAX_Q = 6;
 
-export function play(lesson, root, onFinish){
+export function play(lesson, root, onFinish, opts={}){
   const pool = SLIDES.filter(s => s.lesson === lesson.no);
   if(pool.length < 1){
     mount(root, h('div',{class:'empty'}, 'このレッスンには絵の問題がまだありません。'));
@@ -15,7 +15,7 @@ export function play(lesson, root, onFinish){
   // de-dup images so the same picture doesn't repeat too much in one round
   const seen = new Set(); const uniq = [];
   for(const s of pool){ if(!seen.has(s.full)){ seen.add(s.full); uniq.push(s); } }
-  const questions = sample(uniq, Math.min(MAX_Q, uniq.length));
+  const questions = sample(uniq, Math.min(opts.limit || MAX_Q, uniq.length));
 
   let idx = 0, score = 0;
   const useMic = canRecognize();
