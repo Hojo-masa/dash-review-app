@@ -1,7 +1,7 @@
 // ===== Dish Review — app shell & router =====
-import { LESSONS, lessonByNo } from './engine.js';
+import { LESSONS, lessonByNo, normalize } from './engine.js';
 import { SLIDES } from './slides.js';
-import { h, mount } from './ui.js';
+import { h, mount, speak, canRecognize, recognizeOnce } from './ui.js';
 import * as progress from './progress.js';
 import * as db from './supabase.js';
 import { TEACHER_PASSCODE } from './config.js';
@@ -24,7 +24,16 @@ const GAME_META = {
   fill:    { label:'絵で穴埋め',   ico:'✏️', mod:'./games/fill.js',    needsSlides:true },
   arrange: { label:'並べ替え',     ico:'🧩', mod:'./games/arrange.js' },
   listen:  { label:'リスニング',   ico:'🎧', mod:'./games/listen.js' },
+  roleplay:{ label:'ロールプレイ', ico:'🎭', standalone:true },   // 復習回の会話（毎日1文ずつ隠す）
 };
+
+const hasDialogues = no => { const L = lessonByNo(no); return !!(L && L.dialogues && L.dialogues.length); };
+// 会話データの2形式を [{en,ja}, ...] に正規化（en は "A: ..." 形式）
+function dialogueLines(dia){
+  if(Array.isArray(dia.en)) return dia.en.map((en,idx)=>({ en, ja:(dia.ja&&dia.ja[idx])||'' }));
+  if(Array.isArray(dia.lines)) return dia.lines.map(l=>({ en:l.en||'', ja:l.ja||'' }));
+  return [];
+}
 
 let feedbackList = [];   // 生徒のフィードバック履歴（新→旧）
 let feedback = null;     // 最新（＝現在の弱点）
@@ -42,12 +51,18 @@ async function loadFeedback(code){
 function fmtDate(iso){
   if(!iso) return '';
   const d = new Date(iso);
-  return `${d.getMonth()+1}/${d.getDate()}`;
+  return `${d.getMonth()+1}月${d.getDate()}日`;
 }
 function validWeakPoints(){
   const wp = (feedback && feedback.weak_points) || [];
-  return wp.filter(w => GAME_META[w.game] && (!GAME_META[w.game].needsSlides || hasSlides(w.lesson)));
+  return wp.filter(w => {
+    const m = GAME_META[w.game]; if(!m) return false;
+    if(w.game === 'roleplay') return hasDialogues(w.lesson);
+    return !m.needsSlides || hasSlides(w.lesson);
+  });
 }
+function drillWeakPoints(){ return validWeakPoints().filter(w => !GAME_META[w.game].standalone); }
+function roleplayWeakPoints(){ return validWeakPoints().filter(w => w.game === 'roleplay'); }
 
 const app = document.getElementById('app');
 
@@ -78,7 +93,9 @@ function tabBar(active){
 function home(){
   const streak    = progress.dailyStreak();
   const doneToday = progress.doneToday();
-  const wp        = validWeakPoints();
+  const allWp     = validWeakPoints();
+  const drillWp   = drillWeakPoints();
+  const rpWp      = roleplayWeakPoints();
   const nick      = progress.nickname() || progress.userName();
   const children  = [];
 
@@ -99,13 +116,13 @@ function home(){
     children.push(h('div',{class:'card feedback-card'},
       h('div',{class:'fb-top'},
         h('div',{class:'fb-stars'}, '⭐'.repeat(Math.max(0,Math.min(10, feedback.score||0)))),
-        h('div',{class:'fb-date'}, fmtDate(feedback.created_at))),
+        h('div',{class:'fb-date'}, '評価日 '+fmtDate(feedback.created_at))),
       h('div',{class:'fb-score-line'}, `今日の評価 ${feedback.score!=null?feedback.score:'-'} / 10`),
       feedback.note ? h('div',{class:'fb-note'}, '「'+feedback.note+'」') : ''
     ));
   }
 
-  if(wp.length){
+  if(drillWp.length){
     children.push(h('div',{class:'section-label'},'今日の10問'));
     children.push(h('button',{class:'daily-cta'+(doneToday?' done':''),onClick:dailyDrill},
       h('div',{class:'daily-cta-ico'}, doneToday?'✅':'🔥'),
@@ -114,8 +131,22 @@ function home(){
         h('div',{class:'daily-cta-sub'}, doneToday?'また明日、炎を絶やさずに 🔥':'苦手をまとめて10問。炎をキープ')),
       h('div',{class:'daily-cta-go'}, doneToday?'もう一回':'START')
     ));
+  }
+  if(rpWp.length){
+    children.push(h('div',{class:'section-label'},'ロールプレイ'));
+    rpWp.forEach(w=>{
+      const L = lessonByNo(w.lesson);
+      children.push(h('button',{class:'daily-cta rp',onClick:()=>roleplayEntry(L)},
+        h('div',{class:'daily-cta-ico'}, '🎭'),
+        h('div',{class:'daily-cta-txt'},
+          h('div',{class:'daily-cta-title'}, 'ロールプレイ'),
+          h('div',{class:'daily-cta-sub'}, `${L?L.title:''}・毎日1文ずつ隠して暗記`)),
+        h('div',{class:'daily-cta-go'}, 'START')));
+    });
+  }
+  if(allWp.length){
     children.push(h('div',{class:'section-label'},'あなたの弱点'));
-    wp.forEach(w=>{
+    allWp.forEach(w=>{
       const L=lessonByNo(w.lesson); const m=GAME_META[w.game];
       children.push(h('div',{class:'weak-row'},
         h('div',{class:'weak-ico'}, m.ico),
@@ -202,7 +233,7 @@ function distribute(wp, total){
 }
 
 function dailyDrill(){
-  const wp = validWeakPoints();
+  const wp = drillWeakPoints();
   if(!wp.length){ home(); return; }
   const rounds = distribute(wp, 10);
   let totalScore=0, totalQ=0, i=0;
@@ -233,6 +264,132 @@ function drillComplete(score, total){
       h('div',{class:'streak-msg'}, `今日の10問クリア！ ${score}/${total} 正解 🎉`)),
     h('div',{class:'wrap'},
       h('button',{class:'btn',onClick:home}, 'ホームへ戻る'))
+  );
+  window.scrollTo(0,0);
+}
+
+// ---------- ロールプレイ（復習回の会話・毎日1文ずつ隠す） ----------
+function roleplayEntry(lesson){
+  let role = 'B';
+  render();
+  function render(){
+    const dias = lesson.dialogues || [];
+    const roleBtns = h('div',{class:'role-toggle'},
+      ...['A','B'].map(r=>h('button',{class:'role-btn'+(role===r?' on':''),onClick:()=>{role=r;render();}}, r+'役')));
+    const list = h('div',{class:'rp-list'});
+    dias.forEach((dia,idx)=>{
+      const ls = dialogueLines(dia);
+      const myCount = ls.filter(l=>(l.en||'').trim()[0]===role).length;
+      const key = `${lesson.no}:${idx}:${role}`;
+      const hidden = Math.min(progress.rpHidden(key), myCount);
+      const done = myCount>0 && hidden>=myCount;
+      list.append(h('button',{class:'rp-item',onClick:()=>roleplayRun(lesson,dia,role,idx)},
+        h('div',{class:'rp-item-main'},
+          h('div',{class:'rp-item-title'}, `会話 ${idx+1}`),
+          h('div',{class:'rp-item-sub'}, myCount===0 ? `${role}役のセリフなし`
+              : done ? 'コンプリート！🎉' : `隠し ${hidden} / ${myCount} 文`)),
+        h('div',{class:'rp-item-go'}, myCount===0?'':'▶')));
+    });
+    mount(app, topbarSimple('🎭 ロールプレイ', home),
+      h('div',{class:'wrap'},
+        h('p',{class:'sub'}, `${lesson.title}｜役を選んで会話を選ぼう`),
+        roleBtns, list));
+    window.scrollTo(0,0);
+  }
+}
+
+function roleplayRun(lesson, dia, role, dIdx){
+  const lines = dialogueLines(dia).map(({en,ja})=>{
+    const ci = en.indexOf(':'); const ji = ja.indexOf(':');
+    return { speaker: en.slice(0,ci).trim(), text: en.slice(ci+1).trim(),
+             ja: ji>=0 ? ja.slice(ji+1).trim() : ja };
+  });
+  const myIdx = lines.map((l,i)=>l.speaker===role?i:-1).filter(i=>i>=0);
+  if(!myIdx.length){ roleplayEntry(lesson); return; }
+  const key = `${lesson.no}:${dIdx}:${role}`;
+  const hidden = Math.min(progress.rpHidden(key), myIdx.length);
+  const hiddenSet = new Set(myIdx.slice(0, hidden));
+  const useMic = canRecognize();
+  const total = myIdx.length;
+  let i=0, correct=0;
+  const log = h('div',{class:'rp-log'});
+  step();
+
+  function shell(bottom){
+    mount(app, topbarSimple(`会話（${role}役）`, ()=>roleplayEntry(lesson)),
+      h('div',{class:'rp-play'}, log, h('div',{class:'rp-bottom'}, bottom)));
+    log.scrollTop = log.scrollHeight;
+  }
+  function bubble(l, cls, extra){
+    const b = h('div',{class:'rp-bubble '+cls},
+      h('div',{class:'rp-sp'}, l.speaker+'役'+(cls==='me'?'（あなた）':'')),
+      h('div',{class:'rp-text'}, l.text));
+    if(extra) b.append(extra);
+    log.append(b);
+  }
+  function step(){
+    if(i>=lines.length){ finish(); return; }
+    const l = lines[i];
+    if(l.speaker!==role) partnerTurn(l); else myTurn(l, hiddenSet.has(i));
+  }
+  function partnerTurn(l){
+    bubble(l,'them'); speak(l.text);
+    shell(h('button',{class:'btn',onClick:()=>{ i++; step(); }}, '▶ 次へ'));
+  }
+  function myTurn(l, isHidden){
+    if(!isHidden){
+      bubble(l,'me'); speak(l.text);
+      shell(h('button',{class:'btn',onClick:()=>{ correct++; i++; step(); }}, '言えた！次へ →'));
+    } else {
+      const status = h('div',{class:'mic-status'});
+      const mic = useMic ? h('button',{class:'mic-btn',onClick:go},'🎤') : null;
+      const reveal = h('button',{class:'btn ghost',style:'margin-top:10px',onClick:()=>done(null)}, '答えを見る');
+      shell(h('div',{},
+        h('div',{class:'rp-cue'},
+          h('div',{class:'rp-cue-label'},'あなたのセリフ（意味から英語で言おう）'),
+          h('div',{class:'rp-cue-ja'}, l.ja || '（ヒントなし）')),
+        useMic ? h('div',{style:'text-align:center'}, mic, status) : status,
+        reveal));
+      async function go(){
+        status.textContent='🎙️ 聞いてるよ…';
+        mic.classList.add('listening');
+        try{
+          const alts = await recognizeOnce();
+          mic.classList.remove('listening');
+          const t = normalize(l.text);
+          const ok = alts.some(a=>{ const n=normalize(a); return n===t||n.includes(t)||t.includes(n); });
+          done(ok, alts[0]);
+        }catch(e){ mic.classList.remove('listening'); status.textContent='うまく聞き取れなかった…もう一度'; }
+      }
+      function done(ok, said){
+        speak(l.text);
+        if(ok) correct++;
+        bubble(l,'me', (ok===false && said) ? h('div',{class:'rp-said'}, 'あなた: '+said) : null);
+        i++; step();
+      }
+    }
+  }
+  function finish(){
+    progress.rpAdvance(key, total);
+    progress.record('roleplay','rp', Math.min(correct,total), total);
+    roleplayComplete(lesson, dia, role, key, total);
+  }
+}
+
+function roleplayComplete(lesson, dia, role, key, total){
+  const nowHidden = progress.rpHidden(key);   // 次回の隠し数（今回終了で+1済み）
+  const complete = nowHidden >= total;
+  mount(app, topbarSimple('🎭 ロールプレイ', ()=>roleplayEntry(lesson)),
+    h('div',{class:'streak-hero'},
+      h('div',{class:'flame lit'}, complete ? '🏆' : '🎭'),
+      h('div',{class:'streak-num'}, complete ? '★' : String(nowHidden)),
+      h('div',{class:'streak-unit'}, complete ? 'コンプリート！' : '文まで暗記'),
+      h('div',{class:'streak-msg'}, complete
+        ? '全部そらで言えた！完璧です 🎉'
+        : `ナイス完走！次回はセリフが ${nowHidden}文 隠れるよ🔥`)),
+    h('div',{class:'wrap'},
+      h('button',{class:'btn',onClick:()=>roleplayEntry(lesson)}, '他の会話へ'),
+      h('button',{class:'btn ghost',style:'margin-top:10px',onClick:home}, 'ホームへ'))
   );
   window.scrollTo(0,0);
 }

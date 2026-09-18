@@ -28,6 +28,14 @@ export function logout(){
   currentCode = null; currentName = null;
 }
 
+// ロールプレイの「隠し数」（dialogueKeyごと。前から1文ずつ増える）
+export function rpHidden(key){ const s = load(); return (s.rp && s.rp[key]) || 0; }
+export function rpAdvance(key, max){
+  const s = load(); s.rp = s.rp || {};
+  s.rp[key] = Math.min(max, (s.rp[key]||0) + 1);
+  save(s);
+}
+
 // 任意の進捗blobから連続日数を計算（先生ダッシュボード用）
 export function streakFromData(data){
   const days = (data && data.days) || {};
