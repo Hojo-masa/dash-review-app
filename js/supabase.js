@@ -58,11 +58,11 @@ export async function getFeedbackList(code){
 // ランキング用：全生徒の 累計スター（フィードバックscore合計）＋ニックネーム＋連続日
 export async function getRanking(){
   const [fbRes, prRes, stRes] = await Promise.all([
-    sb.from('feedback').select('code,score'),
+    sb.from('feedback').select('code,score,lesson'),
     sb.from('progress').select('code,data'),
     sb.from('students').select('code,name'),
   ]);
-  const stars = {}; (fbRes.data||[]).forEach(f => { stars[f.code] = (stars[f.code]||0) + (f.score||0); });
+  const stars = {}; (fbRes.data||[]).forEach(f => { if(f.lesson!=null) stars[f.code] = (stars[f.code]||0) + (f.score||0); });
   const prog = {}; (prRes.data||[]).forEach(p => { prog[p.code] = p.data || {}; });
   const rows = (stRes.data||[]).map(s => ({
     code: s.code,

@@ -28,6 +28,14 @@ const GAME_META = {
 };
 
 const hasDialogues = no => { const L = lessonByNo(no); return !!(L && L.dialogues && L.dialogues.length); };
+// そのレッスンで実際に成立するスキルだけ返す（絵ゲームはスライド有り、ロールプレイは会話有りの回のみ）
+function availableSkills(no){
+  const s = [];
+  if(hasSlides(no)) s.push('picture','fill');
+  s.push('listen','arrange');
+  if(hasDialogues(no)) s.push('roleplay');
+  return s;
+}
 // 会話データの2形式を [{en,ja}, ...] に正規化（en は "A: ..." 形式）
 function dialogueLines(dia){
   if(Array.isArray(dia.en)) return dia.en.map((en,idx)=>({ en, ja:(dia.ja&&dia.ja[idx])||'' }));
@@ -36,16 +44,23 @@ function dialogueLines(dia){
 }
 
 let feedbackList = [];   // 生徒のフィードバック履歴（新→旧）
-let feedback = null;     // 最新（＝現在の弱点）
-let totalStars = 0;      // 累計スター（scoreの合計）
+let feedback = null;     // 最新（スコア/コメント表示用）
+let totalStars = 0;      // 累計スター（各レッスン1回分の合計）
+let allWeak = [];        // 全レッスンの弱点を統合したもの
 let schedule;            // 生徒のスケジュール（undefined=未取得, null=未設定）
 
 async function loadFeedback(code){
   try{
     feedbackList = await db.getFeedbackList(code);
-    feedback = feedbackList[0] || null;
-    totalStars = feedbackList.reduce((s,f)=> s + (f.score||0), 0);
-  }catch(e){ feedbackList=[]; feedback=null; totalStars=0; }
+    const rows = feedbackList.filter(f => f.lesson != null);   // 旧・レッスン無し行は無視
+    feedback = rows[0] || null;
+    totalStars = rows.reduce((s,f)=> s + (f.score||0), 0);
+    const seen = new Set(); allWeak = [];
+    rows.forEach(f => (f.weak_points||[]).forEach(w => {         // 全レッスン分をためる（重複除去）
+      const k = w.lesson+':'+w.game;
+      if(!seen.has(k)){ seen.add(k); allWeak.push(w); }
+    }));
+  }catch(e){ feedbackList=[]; feedback=null; totalStars=0; allWeak=[]; }
 }
 
 function fmtDate(iso){
@@ -54,8 +69,7 @@ function fmtDate(iso){
   return `${d.getMonth()+1}月${d.getDate()}日`;
 }
 function validWeakPoints(){
-  const wp = (feedback && feedback.weak_points) || [];
-  return wp.filter(w => {
+  return allWeak.filter(w => {
     const m = GAME_META[w.game]; if(!m) return false;
     if(w.game === 'roleplay') return hasDialogues(w.lesson);
     return !m.needsSlides || hasSlides(w.lesson);
@@ -733,22 +747,32 @@ async function feedbackForm(student){
     scoreRow.append(b);
   }
 
-  const wpLessonSel = h('select',{class:'auth-input select'}, ...LESSONS.map(L=>h('option',{value:L.no}, `L${L.no} ${L.title}`)));
-  const gameSel     = h('select',{class:'auth-input select'}, ...Object.entries(GAME_META).map(([id,m])=>h('option',{value:id}, m.label)));
+  const wpLessonSel = h('select',{class:'auth-input select',onChange:renderSkillToggles},
+    ...LESSONS.map(L=>h('option',{value:L.no}, `L${L.no} ${L.title}`)));
+  const skillBox = h('div',{class:'skill-toggles'});
   const chips = h('div',{class:'chips'});
   function renderChips(){
     chips.innerHTML='';
     if(!weak.length){ chips.append(h('div',{class:'sub'},'まだ弱点なし')); return; }
     weak.forEach((w,idx)=>{
       const m=GAME_META[w.game];
-      chips.append(h('div',{class:'chip'}, `${m.ico} L${w.lesson} × ${m.label} `,
-        h('span',{class:'chip-x',onClick:()=>{ weak.splice(idx,1); renderChips(); }},'×')));
+      chips.append(h('div',{class:'chip'}, `${m?m.ico:''} L${w.lesson} × ${m?m.label:w.game} `,
+        h('span',{class:'chip-x',onClick:()=>{ weak.splice(idx,1); renderSkillToggles(); renderChips(); }},'×')));
     });
   }
-  const addWp = h('button',{class:'btn ghost',style:'margin-top:8px',onClick:()=>{
-    const w = { lesson:Number(wpLessonSel.value), game:gameSel.value };
-    if(!weak.some(x=>x.lesson===w.lesson && x.game===w.game)){ weak.push(w); renderChips(); }
-  }}, '＋ この弱点を追加');
+  function renderSkillToggles(){
+    skillBox.innerHTML='';
+    const wl = Number(wpLessonSel.value);
+    availableSkills(wl).forEach(g=>{
+      const m = GAME_META[g];
+      const on = weak.some(w=>w.lesson===wl && w.game===g);
+      skillBox.append(h('button',{class:'skill-toggle'+(on?' on':''),onClick:()=>{
+        const idx = weak.findIndex(w=>w.lesson===wl && w.game===g);
+        if(idx>=0) weak.splice(idx,1); else weak.push({lesson:wl, game:g});
+        renderSkillToggles(); renderChips();
+      }}, `${m.ico} ${m.label}`));
+    });
+  }
 
   const note = h('textarea',{class:'auth-input',rows:'2',placeholder:'コメント（任意）',style:'resize:vertical'});
   const msg  = h('div',{class:'auth-msg'});
@@ -760,10 +784,11 @@ async function feedbackForm(student){
     weak.length = 0; if(f && Array.isArray(f.weak_points)) f.weak_points.forEach(w=>weak.push({...w}));
     note.value = f ? (f.note||'') : '';
     [...scoreRow.children].forEach((c,idx)=>c.classList.toggle('on', idx+1===score));
-    renderChips();
     editNote.textContent = f ? '✏️ このレッスンは評価済み。修正して上書きされます' : '🆕 新しい評価';
     editNote.className = 'fb-editnote'+(f?' edit':'');
     wpLessonSel.value = String(curLesson);
+    renderSkillToggles();
+    renderChips();
   }
 
   async function doSave(){
@@ -791,9 +816,10 @@ async function feedbackForm(student){
         h('p',{class:'sub',style:'text-align:center;margin:-4px 0 8px'},'その子のレベル基準で相対評価'),
         scoreRow),
       h('div',{class:'auth-card card',style:'margin-top:12px'},
-        h('div',{class:'auth-title'},'弱点を指定（レッスン × スキル）'),
-        h('div',{class:'wp-selects'}, wpLessonSel, gameSel),
-        addWp, chips),
+        h('div',{class:'auth-title'},'弱点スキル'),
+        h('p',{class:'sub',style:'text-align:center;margin:-4px 0 10px'},'苦手なスキルをタップ（過去回はレッスンを変更）'),
+        h('div',{class:'wp-lesson-row'}, h('span',{class:'wp-lesson-lb'},'レッスン'), wpLessonSel),
+        skillBox, chips),
       h('div',{class:'auth-card card',style:'margin-top:12px'},
         h('div',{class:'auth-title'},'コメント'), note),
       msg, save

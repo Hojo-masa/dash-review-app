@@ -263,6 +263,14 @@ body{
   background:var(--surface);color:var(--brand-dark)}
 .fb-editnote{text-align:center;font-size:13px;font-weight:700;color:var(--ink-soft);margin-top:8px}
 .fb-editnote.edit{color:var(--accent)}
+.wp-lesson-row{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.wp-lesson-lb{font-size:13px;font-weight:800;color:var(--ink-soft);flex:none}
+.wp-lesson-row .select{flex:1;min-width:0}
+.skill-toggles{display:flex;flex-wrap:wrap;gap:8px}
+.skill-toggle{border:2px solid var(--line);background:var(--surface);border-radius:999px;
+  padding:10px 15px;font-size:14px;font-weight:800;cursor:pointer;color:var(--ink)}
+.skill-toggle:active{transform:scale(.96)}
+.skill-toggle.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .wp-selects{display:flex;gap:8px;margin-bottom:4px}
 .select{-webkit-appearance:menulist;appearance:auto;text-align:left;flex:1;min-width:0}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
