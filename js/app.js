@@ -36,6 +36,18 @@ function availableSkills(no){
   if(hasDialogues(no)) s.push('roleplay');
   return s;
 }
+
+const BOOKING_KINDS = [
+  { id:'lesson',  label:'通常レッスン', ico:'📖' },
+  { id:'makeup',  label:'振替',        ico:'🔁' },
+  { id:'trial',   label:'体験レッスン', ico:'✨' },
+  { id:'counsel', label:'面談',        ico:'💬' },
+];
+function fmtDay(d){
+  const dt = new Date(d + 'T00:00');
+  const w = ['日','月','火','水','木','金','土'][dt.getDay()];
+  return `${dt.getMonth()+1}/${dt.getDate()}(${w})`;
+}
 // 会話データの2形式を [{en,ja}, ...] に正規化（en は "A: ..." 形式）
 function dialogueLines(dia){
   if(Array.isArray(dia.en)) return dia.en.map((en,idx)=>({ en, ja:(dia.ja&&dia.ja[idx])||'' }));
@@ -98,7 +110,8 @@ function tabBar(active){
     h('div',{class:'tab-ico'}, ico), h('div',{class:'tab-label'}, label));
   return h('div',{class:'tabbar'},
     tab('home','🏠','ホーム', home),
-    tab('schedule','📅','スケジュール', scheduleScreen),
+    tab('book','🎫','予約', bookingScreen),
+    tab('schedule','📅','予定', scheduleScreen),
     tab('ranking','🏆','ランキング', rankingScreen)
   );
 }
@@ -234,6 +247,73 @@ function weeklyView(sch){
         : [h('div',{class:'wk-none'}, '—')]))
   ));
   return h('div',{class:'card wk-card'}, ...rows);
+}
+
+// ---------- 予約（生徒） ----------
+const BOOKING_LINKS = [
+  { label:'通常レッスン（1on1）', ico:'📖', url:'https://calendar.app.google/duQjzP3jc9LT3o9p8' },
+  { label:'振替レッスン',         ico:'🔁', url:'https://calendar.app.google/Rj9ckN1nPtE19i1h7' },
+  { label:'体験レッスン',         ico:'✨', url:'https://calendar.app.google/86SesZYyRGCAjGYJ9' },
+];
+function bookingScreen(){
+  const children = [
+    h('div',{class:'h1',style:'font-size:20px'}, '🎫 予約'),
+    h('p',{class:'sub'}, '予約したいものを選んでね（Googleカレンダーで日時を選べます）'),
+  ];
+  BOOKING_LINKS.forEach(b => children.push(
+    h('a',{class:'book-link',href:b.url,target:'_blank',rel:'noopener'},
+      h('div',{class:'book-ico'}, b.ico),
+      h('div',{class:'book-txt'},
+        h('div',{class:'book-title'}, b.label),
+        h('div',{class:'book-sub'}, 'タップして空いてる日時を選ぶ')),
+      h('div',{class:'book-go'}, '予約 →'))));
+  children.push(h('p',{class:'sub',style:'margin-top:16px;text-align:center'},
+    '予約するとMasato先生のカレンダーに届きます 📩'));
+  mount(app, topbar(null), h('div',{class:'wrap'}, ...children), tabBar('book'));
+  window.scrollTo(0,0);
+}
+
+// ---------- 予約枠の管理（先生） ----------
+async function slotManager(){
+  mount(app, topbarSimple('🎫 予約枠の管理', teacherScreen), h('div',{class:'wrap'}, h('div',{class:'sub'},'読み込み中…')));
+  let slots=[];
+  try{ slots = await db.listSlots(); }catch(e){}
+  const dateI = h('input',{class:'auth-input',type:'date'});
+  const startI = h('input',{class:'sched-time',type:'time'});
+  const endI = h('input',{class:'sched-time',type:'time'});
+  const teacherSel = h('select',{class:'auth-input select'}, ...['ネイティブ','日本人','面談'].map(t=>h('option',{value:t},t)));
+  const kindSel = h('select',{class:'auth-input select'}, h('option',{value:'any'},'なんでもOK'), ...BOOKING_KINDS.map(k=>h('option',{value:k.id},k.label)));
+  const capI = h('input',{class:'auth-input',type:'number',value:'1',min:'1'});
+  const msg = h('div',{class:'auth-msg'});
+  const addBtn = h('button',{class:'btn',style:'margin-top:10px',onClick:add},'この枠を追加');
+  async function add(){
+    if(!dateI.value || !startI.value){ msg.className='auth-msg ng'; msg.textContent='日付と開始時刻を入れてね'; return; }
+    addBtn.disabled=true;
+    try{ await db.createSlot({ date:dateI.value, start_time:startI.value, end_time:endI.value||null,
+      teacher:teacherSel.value, kind:kindSel.value, capacity:Number(capI.value)||1 }); slotManager(); }
+    catch(e){ msg.className='auth-msg ng'; msg.textContent='追加に失敗（テーブル未作成かも）'; addBtn.disabled=false; }
+  }
+  const list = h('div',{class:'slot-list'});
+  slots.forEach(s=> list.append(
+    h('div',{class:'slot-item static'},
+      h('div',{class:'slot-main'},
+        h('div',{class:'slot-when'}, `${fmtDay(s.date)} ${s.start_time}${s.end_time?'〜'+s.end_time:''}`),
+        h('div',{class:'slot-sub'}, `${s.teacher}・${s.kind==='any'?'なんでも':(BOOKING_KINDS.find(k=>k.id===s.kind)||{}).label||s.kind}・予約 ${s.taken}/${s.capacity}`)),
+      h('button',{class:'resv-cancel',onClick:()=>del(s.id)}, '削除'))));
+  async function del(id){ if(!confirm('この枠を削除しますか？（予約も消えます）')) return; try{ await db.deleteSlot(id); slotManager(); }catch(e){} }
+
+  mount(app, topbarSimple('🎫 予約枠の管理', teacherScreen),
+    h('div',{class:'wrap'},
+      h('div',{class:'auth-card card'},
+        h('div',{class:'auth-title'},'予約枠を追加'),
+        dateI,
+        h('div',{class:'sched-row',style:'margin-top:8px'}, startI, h('span',{class:'tilde'},'〜'), endI),
+        h('div',{class:'wp-selects',style:'margin-top:8px'}, teacherSel, kindSel),
+        h('div',{class:'wp-selects',style:'margin-top:8px;align-items:center'}, h('span',{class:'wp-lesson-lb'},'定員'), capI),
+        addBtn, msg),
+      h('div',{class:'section-label'},'登録済みの枠'),
+      slots.length ? list : h('div',{class:'sub'},'まだ枠がありません')));
+  window.scrollTo(0,0);
 }
 
 // ---------- DAILY 10 (苦手をまとめて) ----------

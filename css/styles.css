@@ -334,6 +334,38 @@ body{
 .rank-name{flex:1;font-weight:800;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rank-stars{font-weight:800;color:var(--gold)}
 
+/* ---- 予約 ---- */
+.kind-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+.kind-btn{border:2px solid var(--line);background:var(--surface);border-radius:999px;padding:9px 14px;
+  font-size:14px;font-weight:800;cursor:pointer;color:var(--ink)}
+.kind-btn:active{transform:scale(.96)}
+.kind-btn.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.slot-list{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.slot-item{display:flex;align-items:center;gap:12px;width:100%;text-align:left;cursor:pointer;
+  background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:var(--shadow)}
+.slot-item:not(.static):active{transform:scale(.99)}
+.slot-item.static{cursor:default}
+.slot-main{flex:1;min-width:0}
+.slot-when{font-weight:800;font-size:15px}
+.slot-sub{color:var(--ink-soft);font-size:12.5px;margin-top:2px}
+.slot-go{flex:none;background:var(--brand);color:#fff;border-radius:999px;padding:8px 16px;font-weight:800;font-size:13px}
+.resv-row{display:flex;align-items:center;gap:12px;background:var(--good-soft);border:1px solid var(--good);
+  border-radius:14px;padding:12px 14px;margin-bottom:10px}
+.resv-main{flex:1;min-width:0}
+.resv-when{font-weight:800;font-size:15px;color:var(--good-dark)}
+.resv-sub{color:var(--ink-soft);font-size:12.5px}
+.resv-cancel{flex:none;border:1px solid var(--bad);background:none;color:var(--bad);border-radius:999px;
+  padding:7px 12px;font-size:12.5px;font-weight:800;cursor:pointer}
+.book-link{display:flex;align-items:center;gap:14px;text-decoration:none;color:inherit;
+  background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;
+  box-shadow:var(--shadow);margin-bottom:12px}
+.book-link:active{transform:scale(.99)}
+.book-ico{font-size:30px;flex:none}
+.book-txt{flex:1;min-width:0}
+.book-title{font-weight:800;font-size:16px}
+.book-sub{color:var(--ink-soft);font-size:12.5px;margin-top:2px}
+.book-go{flex:none;background:var(--brand);color:#fff;border-radius:999px;padding:9px 16px;font-weight:800;font-size:13px}
+
 /* ---- auth / login ---- */
 .auth-wrap{padding:48px 22px 30px;display:flex;flex-direction:column;align-items:center;text-align:center}
 .auth-logo{height:56px;margin-bottom:16px}

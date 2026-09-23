@@ -97,6 +97,43 @@ export async function saveSchedule(code, data){
   if(error) throw error;
 }
 
+// ===== 予約システム =====
+export async function listSlots(){
+  const today = new Date().toISOString().slice(0,10);
+  const { data, error } = await sb.from('slots')
+    .select('*, reservations(id,status)')
+    .gte('date', today)
+    .order('date').order('start_time');
+  if(error) throw error;
+  return (data||[]).map(s => {
+    const taken = (s.reservations||[]).filter(r=>r.status==='confirmed').length;
+    return { ...s, taken, open: taken < s.capacity };
+  });
+}
+export async function createSlot(slot){ const { error } = await sb.from('slots').insert(slot); if(error) throw error; }
+export async function deleteSlot(id){ const { error } = await sb.from('slots').delete().eq('id', id); if(error) throw error; }
+export async function book(slot_id, code, kind){
+  const { error } = await sb.from('reservations').insert({ slot_id, code, kind });
+  if(error) throw error;
+}
+export async function myReservations(code){
+  const { data, error } = await sb.from('reservations')
+    .select('id,kind,status,created_at, slots(date,start_time,end_time,teacher)')
+    .eq('code', code).eq('status','confirmed')
+    .order('created_at', { ascending:false });
+  if(error) throw error; return data || [];
+}
+export async function cancelReservation(id){
+  const { error } = await sb.from('reservations').update({ status:'cancelled' }).eq('id', id);
+  if(error) throw error;
+}
+export async function allReservations(){
+  const { data, error } = await sb.from('reservations')
+    .select('id,kind,code, students(name), slots(date,start_time,teacher)')
+    .eq('status','confirmed');
+  if(error) throw error; return data || [];
+}
+
 function genCode(name){
   const base = (name||'').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,6) || 'dash';
   const rnd = Math.random().toString(36).slice(2,6);
