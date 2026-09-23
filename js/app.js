@@ -4,7 +4,15 @@ import { SLIDES } from './slides.js';
 import { h, mount, speak, canRecognize, recognizeOnce } from './ui.js';
 import * as progress from './progress.js';
 import * as db from './supabase.js';
-import { TEACHER_PASSCODE } from './config.js';
+import { TEACHER_PASSCODE, LIFF_ID, MEET_URL } from './config.js';
+
+// LINE内なら liff.openWindow、そうでなければ通常の新規タブでURLを開く
+function openUrl(url){
+  try{
+    if(window.liff && liff.isInClient && liff.isInClient()){ liff.openWindow({ url, external:true }); return; }
+  }catch(e){}
+  window.open(url, '_blank', 'noopener');
+}
 
 const APP_NAME = 'Dash';   // Dish の復習アプリ＝Dash（習ったことを駆け抜ける）
 
@@ -138,6 +146,12 @@ function home(){
     )
   ));
 
+  if(MEET_URL){
+    children.push(h('button',{class:'meet-btn',onClick:()=>openUrl(MEET_URL)},
+      h('span',{class:'meet-ico'},'🎥'),
+      h('span',{}, 'オンライン教室に入る')));
+  }
+
   if(feedback){
     children.push(h('div',{class:'section-label'},'先生からの評価'));
     children.push(h('div',{class:'card feedback-card'},
@@ -261,7 +275,7 @@ function bookingScreen(){
     h('p',{class:'sub'}, '予約したいものを選んでね（Googleカレンダーで日時を選べます）'),
   ];
   BOOKING_LINKS.forEach(b => children.push(
-    h('a',{class:'book-link',href:b.url,target:'_blank',rel:'noopener'},
+    h('div',{class:'book-link',onClick:()=>openUrl(b.url)},
       h('div',{class:'book-ico'}, b.ico),
       h('div',{class:'book-txt'},
         h('div',{class:'book-title'}, b.label),
@@ -964,6 +978,7 @@ async function scheduleForm(student){
 
 // ---------- BOOT ----------
 async function boot(){
+  if(LIFF_ID && window.liff){ try{ await liff.init({ liffId: LIFF_ID }); }catch(e){} }  // LINE内対応
   let saved=null; try{ saved = localStorage.getItem('dash_current_code'); }catch(e){}
   if(saved && db.ready()){
     try{

@@ -215,6 +215,11 @@ body{
 .daily-cta-title{font-weight:800;font-size:16px}
 .daily-cta-sub{font-size:12.5px;opacity:.92;margin-top:2px}
 .daily-cta-go{flex:none;background:rgba(255,255,255,.22);border-radius:999px;padding:8px 14px;font-weight:800;font-size:13px}
+.meet-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;border:none;
+  border-radius:16px;padding:15px;margin-top:14px;cursor:pointer;color:#fff;font-weight:800;font-size:16px;
+  background:linear-gradient(135deg,#2a7de1,#1a56c4);box-shadow:var(--shadow-lg)}
+.meet-btn:active{transform:scale(.98)}
+.meet-ico{font-size:22px}
 
 /* ---- 弱点リスト ---- */
 .weak-row{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);
