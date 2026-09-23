@@ -717,7 +717,7 @@ function loginScreen(){
       let cloud=null; try{ cloud = await db.getProgress(code); }catch(e){}
       progress.setUser(code, cloud, st.name);
       await loadFeedback(code);
-      home();
+      routeInitial();
     }catch(e){
       msg.className='auth-msg ng'; msg.textContent='接続できませんでした。少し待って試してね'; go.disabled=false;
     }
@@ -976,6 +976,15 @@ async function scheduleForm(student){
   window.scrollTo(0,0);
 }
 
+// ログイン後、URLの ?tab= に応じて最初の画面へ（リッチメニューのボタン用）
+function routeInitial(){
+  let tab=''; try{ tab = new URLSearchParams(location.search).get('tab') || ''; }catch(e){}
+  if(tab==='book') return bookingScreen();
+  if(tab==='schedule') return scheduleScreen();
+  if(tab==='ranking') return rankingScreen();
+  return home();
+}
+
 // ---------- BOOT ----------
 async function boot(){
   if(LIFF_ID && window.liff){ try{ await liff.init({ liffId: LIFF_ID }); }catch(e){} }  // LINE内対応
@@ -987,7 +996,7 @@ async function boot(){
         let cloud=null; try{ cloud = await db.getProgress(saved); }catch(e){}
         progress.setUser(saved, cloud, st.name);
         await loadFeedback(saved);
-        home(); return;
+        routeInitial(); return;
       }
     }catch(e){ /* fall through to login */ }
   }

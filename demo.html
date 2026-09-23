@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>ヒントUI デモ</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="app">
+    <div class="topbar"><div class="logo">Dish<span>.</span></div><div class="spacer"></div>
+      <div class="pill">UIデモ</div></div>
+    <div class="wrap">
+      <div class="h1" style="font-size:19px">「絵を見て言う」問題のイメージ</div>
+      <p class="sub">絵がヒント。日本語はカンタンには出ない。</p>
+
+      <div class="card" style="padding:22px;text-align:center;margin-bottom:6px">
+        <div style="font-size:64px">👨‍🏫</div>
+        <div style="color:var(--ink-soft);font-size:13px;margin-top:8px">この絵を英語で言ってみよう（声 or 心の中で）</div>
+        <div style="font-size:12px;color:var(--ink-soft);margin-top:4px">正解例：I wanna be a teacher. / I gotta be a teacher.</div>
+      </div>
+
+      <div id="gate-slot"></div>
+
+      <div style="margin-top:34px" class="h1" name="test">試し方</div>
+      <p class="sub">下の「意味が知りたい？」を押して、英語で聞いてみてください。<br>
+        例：<b>How do I say this in Japanese?</b>（授業で習ったやつ）<br>
+        わざと違う文を入れると、3回で型がチラ見えします。</p>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createHintGate } from './js/hintGate.js';
+    import { jaFor, JA_COUNT } from './js/ja.js';
+    const target = 'I wanna be a teacher.';
+    const gate = createHintGate(jaFor(target), { label:'意味が知りたい？' });
+    document.getElementById('gate-slot').append(gate);
+    console.log('JA_COUNT', JA_COUNT, '| jaFor("'+target+'") =', jaFor(target));
+  </script>
+</body>
+</html>
